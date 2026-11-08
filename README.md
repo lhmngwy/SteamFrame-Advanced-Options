@@ -209,5 +209,6 @@ docs/                  User and developer guides
 ```
 
 Third-party licenses for MinHook/HDE and the NVIDIA Video Codec SDK header live under
-`Native/vendor` and are copied into the release package. The codec package also
+`Native/vendor` and are copied into the release package. The Iced x64 decoder's MIT
+license is in `SteamLinkVRSettings/Licenses` and accompanies build/publish output. The codec package also
 includes CPython's license and the GPL-2.0-only decoder's corresponding source.

@@ -1,10 +1,12 @@
-Run the patcher tests with .NET 9 or newer. Diagnostic tests need no driver binaries;
-patch round trips require local, unmodified driver fixtures:
+Run the patcher tests with .NET 9 or newer. Diagnostic and synthetic instruction-aware
+patch/restore/refusal tests need no driver binaries. Real-driver round trips require
+local, unmodified fixtures:
 
 ```powershell
 $env:SLVR_PATCHER_FIXTURE = 'C:\path\to\legacy-original\driver_vrlink.dll' # optional legacy harness
 $env:SLVR_PATCHER_CURRENT_FIXTURE = 'C:\path\to\beta-original\driver_vrlink.dll'
 $env:SLVR_PATCHER_STABLE_FIXTURE = 'C:\path\to\stable-original\driver_vrlink.dll'
+$env:SLVR_PATCHER_ADAPTIVE_FIXTURE = 'C:\path\to\newer-original\driver_vrlink.dll' # optional, discovered rather than hash-pinned
 dotnet test Tests/PatcherTests
 ```
 
@@ -17,3 +19,10 @@ verify that a known build number cannot authorize unknown bytes and that pending
 branch changes cannot mislabel the installed version.
 
 Checks cover exact output and original backup for both builds, restore/idempotency, rejected layouts and mixed/missing backups, segment preimages, cancellation, and SteamVR starting immediately before replacement. Adaptive cases shift raw section offsets or relocate section RVAs with adjusted imports and function tables, then verify patch receipts reproduce and restore the exact source. Ambiguous signatures, changed NVENC contracts, changed import targets and corrupt receipts are refused. A simulated Steam update confirms previous backups/receipts remain intact.
+
+Synthetic PE images exercise instruction-boundary decoding with different stack,
+object-field and register layouts, chained function fragments, and exact patch/restore
+without distributing Valve code. Refusal cases break the query slot/output, config
+pointer/version, copy size, level field/register, HEVC GUID, CRT import, unwind chain,
+or padding, or add duplicate verified candidates and incoming branches. They verify
+that refusal creates no recovery files and leaves the target bytes unchanged.

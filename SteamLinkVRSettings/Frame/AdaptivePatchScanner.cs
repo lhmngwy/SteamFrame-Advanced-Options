@@ -6,7 +6,7 @@ namespace SteamLinkVRSettings.Frame;
 // Accepts moved code/data only when all independently checked instruction contexts,
 // function bounds, codec structure layouts and imported memcpy remain recognizable.
 // There is no "best match": ambiguous or changed layouts are refused.
-public static class AdaptivePatchScanner
+public static partial class AdaptivePatchScanner
 {
     private const string Caps = "F3 44 0F 10 15 ?? ?? ?? ?? F3 0F 11 8F 40 01 00 00 49 8B 8E 88 01 00 00 48 8B 01 FF 90 88 00 00 00 84 C0 74 09 F3 44 0F 10 15 ?? ?? ?? ??";
     private const string StableCaps = "F3 44 0F 10 0D ?? ?? ?? ?? F3 0F 11 8F 3C 01 00 00 49 8B 8E 88 01 00 00 48 8B 01 FF 90 88 00 00 00 84 C0 74 09 F3 44 0F 10 0D ?? ?? ?? ??";
@@ -24,16 +24,31 @@ public static class AdaptivePatchScanner
         // verified family; do not wildcard member offsets or mix their contexts.
         var cap = pe.Unique("Bitrate cap selector", Caps, StableCaps);
         var stable = cap.Variant == 1;
-        var preset = pe.Unique("HEVC preset copy", stable ? StablePreset : Preset);
-        var level = pe.Unique("HEVC level configuration", stable ? StableLevel : Level);
         var api = pe.Unique("NVENC API initialization", Api);
         pe.FunctionContaining(api.Offset, api.Length);
-        var presetFunction = pe.FunctionContaining(preset.Offset, preset.Length);
         pe.FunctionContaining(cap.Offset, cap.Length);
-        var levelFunction = pe.FunctionContaining(level.Offset, level.Length);
-        Require(levelFunction.Begin != presetFunction.Begin, "Preset and reconfiguration signatures are not distinct functions.");
-        Require(CountMatches(source, pe.Offset(presetFunction.Begin), checked((int)(presetFunction.End - presetFunction.Begin)), Pattern(PresetVersions)) == 1,
-            "The NVENC preset structure version/layout changed.");
+        int hook = -1, levelImmediate = -1;
+        (int Offset, int Length, int Variant) preset;
+        try { preset = pe.Unique("HEVC preset copy", stable ? StablePreset : Preset); }
+        catch (InvalidDataException ex) when (ex.Message == "HEVC preset copy: no supported instruction signature was found.")
+        {
+            // A changed compiler layout is not permission to wildcard private fields.
+            // Reconstruct them from the API/config initialization and decoded uses.
+            (hook, levelImmediate) = DiscoverInstructions(source, pe, api.Offset);
+            preset = default;
+        }
+        if (preset.Length != 0)
+        {
+            var level = pe.Unique("HEVC level configuration", stable ? StableLevel : Level);
+            var presetFunction = pe.FunctionContaining(preset.Offset, preset.Length);
+            var levelFunction = pe.FunctionContaining(level.Offset, level.Length);
+            Require(levelFunction.Begin != presetFunction.Begin, "Preset and reconfiguration signatures are not distinct functions.");
+            Require(CountMatches(source, pe.Offset(presetFunction.Begin), checked((int)(presetFunction.End - presetFunction.Begin)), Pattern(PresetVersions)) == 1,
+                "The NVENC preset structure version/layout changed.");
+            hook = preset.Offset + 26;
+            levelImmediate = level.Offset + 18;
+        }
+        Require(hook >= 0 && levelImmediate >= 0, "Encoder patch locations were not verified.");
         // These loads are the general and wireless-adapter-present ceiling selectors.
         var generalRva = pe.Relative(cap.Offset + 5, cap.Offset + 9);
         var wirelessRva = pe.Relative(cap.Offset + 42, cap.Offset + 46);
@@ -44,7 +59,6 @@ public static class AdaptivePatchScanner
         // The precise E00-byte copy follows NVENC's HEVC preset query. Resolve its
         // call target through an actual PE import; a similarly named/static function
         // is not enough to establish the tail-call contract.
-        var hook = preset.Offset + 26;
         Require(source[hook] == 0xe8, "Preset copy is not a direct rel32 call.");
         var memcpyRva = pe.Relative(hook + 1, hook + 5);
         var memcpy = pe.Offset(memcpyRva, 6);
@@ -63,7 +77,7 @@ public static class AdaptivePatchScanner
         var changes = new List<PatchSegment>();
         Add(wireless, Convert.FromHexString("0000fa43"), "Wireless-adapter-present bitrate cap");
         Add(general, Convert.FromHexString("0000fa43"), "General bitrate cap");
-        Add(level.Offset + 18, Convert.FromHexString("ba000000"), "HEVC reconfiguration default level 6.2");
+        Add(levelImmediate, Convert.FromHexString("ba000000"), "HEVC reconfiguration default level 6.2");
         Add(cave, stub, "Preset HEVC level 6.2 leaf tail call");
         Add(hook, call, "Route preset copy through the level fix");
         var virtualSize = new byte[4];
@@ -103,7 +117,7 @@ public static class AdaptivePatchScanner
     }
 
     private sealed record Section(int Header, uint Rva, uint VirtualSize, int Raw, int RawSize, uint Flags);
-    private sealed record Function(uint Begin, uint End);
+    private sealed record Function(uint Begin, uint End, uint Unwind);
     private sealed class Image
     {
         private readonly byte[] data;
@@ -146,8 +160,47 @@ public static class AdaptivePatchScanner
             {
                 var begin = U32(p); var end = U32(p + 4); var unwind = U32(p + 8);
                 Require(begin >= previousEnd && end > begin && IsExecutable(begin, checked((int)(end - begin))), "Malformed or overlapping function bounds.");
-                Offset(unwind, 4); Functions.Add(new(begin, end)); previousEnd = end;
+                Offset(unwind, 4); Functions.Add(new(begin, end, unwind)); previousEnd = end;
             }
+        }
+        public List<Function> AnalysisFunctions()
+        {
+            // MSVC splits large functions into chained RUNTIME_FUNCTION entries.
+            // Join only contiguous fragments whose unwind chain names the exact
+            // same parent entry. Adjacency alone never establishes ownership.
+            var entries = Functions.ToDictionary(f => f.Begin);
+            var roots = new Dictionary<uint, uint>();
+            foreach (var function in Functions)
+            {
+                var current = function;
+                var seen = new HashSet<uint>();
+                while (true)
+                {
+                    Require(seen.Add(current.Begin) && seen.Count <= 32, "Cyclic or excessive x64 unwind chain.");
+                    int unwind = Offset(current.Unwind, 4);
+                    int flags = data[unwind] >> 3;
+                    Require((data[unwind] & 7) is 1 or 2, "Unsupported x64 unwind version.");
+                    if ((flags & 4) == 0) break;
+                    Require((flags & 3) == 0, "Chained x64 unwind entry has conflicting handler flags.");
+                    int tail = Offset(checked(current.Unwind + (uint)(4 + ((data[unwind + 2] + 1) & ~1) * 2)), 12);
+                    Require(entries.TryGetValue(U32(tail), out var parent) && parent.End == U32(tail + 4) && parent.Unwind == U32(tail + 8),
+                        "Chained x64 unwind parent is not an exact function-table entry.");
+                    current = parent!;
+                }
+                roots.Add(function.Begin, current.Begin);
+            }
+            var result = new List<Function>();
+            foreach (var group in Functions.GroupBy(f => roots[f.Begin]))
+            {
+                Function? range = null;
+                foreach (var fragment in group.OrderBy(f => f.Begin))
+                {
+                    if (range != null && range.End == fragment.Begin) range = range with { End = fragment.End };
+                    else { if (range != null) result.Add(range); range = fragment; }
+                }
+                if (range != null) result.Add(range);
+            }
+            return result.OrderBy(f => f.Begin).ToList();
         }
         public (int Offset, int Length, int Variant) Unique(string context, params string[] signatures)
         {

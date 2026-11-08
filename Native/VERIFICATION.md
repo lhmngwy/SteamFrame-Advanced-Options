@@ -1,5 +1,43 @@
 # Driver and NVENC compatibility evidence
 
+## Instruction-aware bitrate patch (November 7, 2026)
+
+Read-only inspection of installed beta build **26496310**, reported as SteamVR
+**2.19.2**, reproduced the missing HEVC preset-copy signature. The original SHA-256
+is `4e8a1a949ae1f78c8210ba2ab59702cc30a0093129836ebe5e888075ca143e3a`.
+The cap selector and public NVENC ABI remained recognizable, but the preset locals
+moved to `rbp-0x10`/`rbp-8`. Reconfiguration now writes the embedded config directly.
+
+The new decoder-backed path derives table member `0x9A60`, config pointer `0x270`
+and embedded config `0x928` from initialization. It checks the public table slot
+`+0x140`, preset/config versions `0xF104000B`/`0xF107000B`, the output argument,
+and the exact `0xE00`-byte imported CRT `memcpy`. The level selection writes config
+`+0xA8` with tier `+0xAC` set to 1, guarded by both halves of the public HEVC GUID.
+The default-level immediate is at RVA `A2ADA4`, and the preset copy call at RVA
+`A29C8A`. The initialization spans contiguous chained unwind entries; those chains
+are verified before joining fragments for instruction-boundary decoding.
+
+Isolated patch/receipt/backup recognition and exact restoration passed. The output
+SHA-256 is `90a2ada0427c3056512bff67e7244b0e11d7dc08add58f6ebd768414a1a3c3f7`.
+The installed driver and its recovery files were not modified or loaded by tests.
+Two additional retained originals (`f3d287ef…` and `8e7100b6…`) also passed isolated
+round trips; the former reproduces its existing receipt's patched hash exactly.
+No new hash allowlist or version-specific signature authorizes these patches.
+
+Synthetic PE tests cover changed stack/object offsets, register allocation,
+interleaved loads, and chained/non-chained functions. Refusal tests cover broken
+data flow, incorrect public contracts, imports/GUIDs, register clobbers, incoming
+branches, duplicate candidates, occupied padding and malformed unwind chains.
+The full Release build passed 360 managed tests, seven native tests and 30
+compositor assertions. Five historical-fixture tests and the optional Python
+receiver test were skipped because their fixtures/runtime were unavailable.
+
+This is disk-patch validation, not a live streaming acceptance test or a claim of
+codec/custom-quality-hook support. Known-layout paths remain available unchanged.
+The decoder path deliberately supports bounded initialization/data-flow forms;
+changed cap selectors, API layouts, control flow or unavailable padding can still
+require an update. The app does not install patches unattended.
+
 ## Public stable bitrate patch (October 16, 2026)
 
 Switching SteamVR from beta build 25839986 to public build 25330290 reproduced the

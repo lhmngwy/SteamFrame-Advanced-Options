@@ -73,6 +73,22 @@ The scanner recognizes each complete instruction family separately, retaining th
 NVENC version, function-boundary, import, cap-constant and executable-padding checks.
 Patch compatibility does not establish support for every private encoder or codec hook.
 
+For changed preset/reconfiguration layouts, the scanner also decodes x64 instructions
+with Iced. It derives the private API-table and embedded encoder-config locations from
+their initialization, then verifies the preset query's API slot, output argument,
+structure versions and exact imported `memcpy` copy. Reconfiguration must write the
+matching config's level/tier fields under a comparison against the actual HEVC codec
+GUID. Stack locations, object-field offsets and level registers may change without an
+app update when these relationships still hold. Contiguous function fragments are
+joined only through verified x64 unwind chains, never merely because they are adjacent.
+
+This path was checked against beta build **26496310** (reported as SteamVR **2.19.2**)
+using an isolated copy: patching and exact restoration passed. The installed driver
+was not replaced, and live streaming on this patch has not been tested. Existing
+known-layout paths remain unchanged. Bitrate-cap selectors, API versions, supported
+initialization forms and safe executable padding are still required; this is not
+universal support for all future builds or automatic unattended patch installation.
+
 A missing original backup is normal before the first installation. If an unmodified driver
 is reported as unsupported, collect **Driver file and verification** details and the SteamVR
 build/branch. File verification repairs modified files; it cannot add a layout to the app's

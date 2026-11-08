@@ -11,6 +11,7 @@
     <EmbeddedResource Include="../../SteamLinkVRSettings/Assets/bitrate-patch.json" LogicalName="SteamLinkVRSettings.Assets.bitrate-patch.json" />
     <EmbeddedResource Include="../../SteamLinkVRSettings/Assets/bitrate-patch-stable.json" LogicalName="SteamLinkVRSettings.Assets.bitrate-patch-stable.json" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Iced" Version="1.21.0" />
     <Using Include="Xunit" />
     <PackageReference Include="xunit.v3" Version="2.0.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1" />

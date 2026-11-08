@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Instruction-aware driver patch discovery
+
+- Added guarded x64 instruction analysis for changed NVENC preset and embedded
+  configuration layouts. Private object fields are derived from initialization;
+  query/copy data flow and HEVC-guarded level writes are checked rather than adding
+  another SteamVR version-specific byte signature. Earlier exact-layout paths remain.
+- Beta build 26496310 (SteamVR 2.19.2) passes isolated patch and exact-restore tests.
+  This does not establish live streaming, codec or custom quality-hook compatibility.
+- Added binary-free synthetic patch/restore and refusal tests for changed registers,
+  stack/object offsets, chained unwind entries, ambiguity and broken relationships.
+  Unsupported layouts still fail closed; patches are not installed unattended.
+
 ## 1.8.2 — Driver compatibility and a lower-latency HEVC option
 
 - Added an optional Lower-latency HEVC preset: 200 Mbps, single pass and synchronous

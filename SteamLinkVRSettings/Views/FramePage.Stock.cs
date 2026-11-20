@@ -20,6 +20,7 @@ public sealed partial class FramePage
     private async void RestoreStock_Click(object sender, RoutedEventArgs e) => await ActionAsync(async () =>
     {
         await EnsureCodecStableAsync();
+        await DisableMaintenanceBeforeRestoreAsync();
         var state = await _codecController.ReadStatusAsync();
         var driver = await _patcher.InspectAsync(_paths.Driver);
         if (driver.IsPatched && driver.BackupState != BitrateBackupState.VerifiedOriginal) throw new InvalidOperationException("The original driver backup could not be verified. Recover that backup before restoring stock.");

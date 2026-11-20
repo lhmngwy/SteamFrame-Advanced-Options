@@ -6,6 +6,8 @@ try {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
     $taskMsbuild = & $vswhere -latest -products '*' -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
     if (-not $taskMsbuild) { throw 'Visual Studio MSBuild is required to build WinUI XAML.' }
+    & dotnet publish 'SteamFrame.PatchService\SteamFrame.PatchService.csproj' --configuration $Configuration --runtime win-x64 --self-contained true --output 'artifacts\PatchService' --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'Patch maintenance service publish failed.' }
     $buildArguments = @('SteamLinkVRSettings\SteamLinkVRSettings.csproj', '-restore', "-p:Configuration=$Configuration", '-p:Platform=x64', '-nologo', '-v:minimal')
     if ($OutputDirectory) {
         $taskOutputPath = if ([System.IO.Path]::IsPathRooted($OutputDirectory)) { $OutputDirectory } else { Join-Path $PSScriptRoot $OutputDirectory }
@@ -15,7 +17,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'App build failed.' }
     # xUnit projects. PatcherTests skips unless SLVR_PATCHER_FIXTURE names a verified original driver.
     if (-not (Get-Command python -ErrorAction SilentlyContinue)) { Write-Warning 'Python 3 is not on PATH; Frame receiver diagnostics tests will be skipped.' }
-    foreach ($testProject in @('CoreTests', 'BenchmarkTests', 'StreamingHealthTests', 'StreamingFrameTraceTests', 'FrameReceiverDiagnosticsTests', 'PatcherTests')) {
+    foreach ($testProject in @('CoreTests', 'BenchmarkTests', 'StreamingHealthTests', 'StreamingFrameTraceTests', 'FrameReceiverDiagnosticsTests', 'PatcherTests', 'PatchMaintenanceTests')) {
         & dotnet test (Join-Path 'Tests' $testProject) --configuration $Configuration --nologo
         if ($LASTEXITCODE -ne 0) { throw "$testProject failed." }
     }

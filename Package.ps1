@@ -56,13 +56,17 @@ try {
     New-Item -ItemType Directory -Path $stageRoot -Force | Out-Null
     & $taskMsbuild 'SteamLinkVRSettings\SteamLinkVRSettings.csproj' -restore -t:Publish -p:Configuration=Release -p:Platform=x64 -p:RuntimeIdentifier=win-x64 -p:SelfContained=true -p:WindowsAppSDKSelfContained=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false "-p:OutputPath=$packageBuildRoot\" "-p:PublishDir=$stageRoot\" -nologo -v:minimal
     if ($LASTEXITCODE -ne 0) { throw "Portable publish failed; output preserved at $stageRoot" }
+    & dotnet publish 'SteamFrame.PatchService\SteamFrame.PatchService.csproj' --configuration Release --runtime win-x64 --self-contained true --output (Join-Path $stageRoot 'PatchService') --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'Patch maintenance service publish failed.' }
     # WinUI's loose compiled XAML and app resource index are generated into the
     # build output, but this unpackaged Publish target does not copy them.
     $appResourceIndex = Join-Path $packageBuildRoot 'SteamLinkVRSettings.pri'
     if (-not (Test-Path -LiteralPath $appResourceIndex)) { throw 'WinUI app resource index was not built.' }
     Copy-Item -LiteralPath $appResourceIndex -Destination $stageRoot
     foreach ($compiledXaml in Get-ChildItem -LiteralPath $packageBuildRoot -Recurse -File -Filter '*.xbf') {
-        $relativeXaml = [IO.Path]::GetRelativePath($packageBuildRoot, $compiledXaml.FullName)
+        # GetRelativePath is unavailable in Windows PowerShell 5.1. Enumeration is
+        # rooted in this freshly created absolute build directory, so strip its prefix.
+        $relativeXaml = $compiledXaml.FullName.Substring($packageBuildRoot.Length).TrimStart([IO.Path]::DirectorySeparatorChar)
         $publishedXaml = [IO.Path]::GetFullPath((Join-Path $stageRoot $relativeXaml))
         Assert-ArtifactPath $publishedXaml
         if (-not $publishedXaml.StartsWith($stageRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {

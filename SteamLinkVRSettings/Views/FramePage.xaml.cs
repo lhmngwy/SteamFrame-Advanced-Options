@@ -877,6 +877,7 @@ public sealed partial class FramePage : Page
     });
     private async void RestorePatch_Click(object sender, RoutedEventArgs e) => await ActionAsync(async () =>
     {
+        await DisableMaintenanceBeforeRestoreAsync();
         _patch = await _patcher.RestoreAsync(DriverPathInput.Text.Trim().Trim('"'));
         BindPatch();
         return _patch.Message;

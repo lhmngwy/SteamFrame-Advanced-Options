@@ -2,6 +2,26 @@
 
 ## Unreleased — Instruction-aware driver patch discovery
 
+- Fixed normal-user UI connections to the installed startup service. Endpoint identity
+  is verified using the read-only Service Control Manager configuration and live process
+  ID, rather than opening the virtual service account's process (which Windows can deny).
+
+- Fixed startup-service installation rolling back with access denied while configuring
+  restart recovery: the service handle now requests the additional Windows-required
+  start permission. Installer failures report their exact stage, Windows error and
+  rollback outcome through a private local reply channel instead of a generic message.
+
+- Added opt-in Windows startup maintenance for the 500 Mbps/HEVC 6.2 driver patch.
+  The background service uses the shared verified patch engine, waits for SteamVR to close,
+  refuses unsupported files, and retains build-specific recovery originals and receipts.
+- Added independently selectable Pushover success/failure notifications, encrypted service
+  credentials, incident deduplication and a persistent bounded delivery queue with backoff.
+- Added protected service installation/update/uninstall, status and sanitized diagnostics
+  under Patches & Recovery. Restore, stock-driver presets and Back to stock first disable
+  automatic reapplication. The portable app remains non-installing by default.
+- Added maintenance/IPC/storage/HTTP tests and real synthetic-driver update/reapply/restore
+  integration coverage. Reboot/session-zero and real Pushover delivery require opt-in VM testing.
+
 - Added guarded x64 instruction analysis for changed NVENC preset and embedded
   configuration layouts. Private object fields are derived from initialization;
   query/copy data flow and HEVC-guarded level writes are checked rather than adding
@@ -10,7 +30,7 @@
   This does not establish live streaming, codec or custom quality-hook compatibility.
 - Added binary-free synthetic patch/restore and refusal tests for changed registers,
   stack/object offsets, chained unwind entries, ambiguity and broken relationships.
-  Unsupported layouts still fail closed; patches are not installed unattended.
+  Unsupported layouts still fail closed; unattended patching requires explicit service opt-in.
 
 ## 1.8.2 — Driver compatibility and a lower-latency HEVC option
 

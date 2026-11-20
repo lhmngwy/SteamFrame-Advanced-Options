@@ -19,6 +19,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Frame\BitratePatcher.cs;Frame\PatchManifest.cs;Frame\AdaptivePatchScanner*.cs;Frame\DriverCompatibility.cs;Frame\RuntimeProcessState.cs" />
+    <ProjectReference Include="..\SteamFrame.DriverPatching\SteamFrame.DriverPatching.csproj" />
+    <ProjectReference Include="..\SteamFrame.PatchMaintenance\SteamFrame.PatchMaintenance.csproj" />
     <PackageReference Include="Iced" Version="1.21.0" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250513003" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
@@ -27,8 +30,7 @@
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.250402" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Assets\bitrate-patch.json" />
-    <EmbeddedResource Include="Assets\bitrate-patch-stable.json" />
+    <Content Include="..\artifacts\PatchService\**\*" Link="PatchService\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
     <Content Include="Licenses\Iced.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="$(NativeHelperPath)" Link="Native\SteamFrameEncoderProbe.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(NativeHelperPath)')" />
     <Content Include="..\Native\build\SteamFrameBenchmark.exe" Link="Native\SteamFrameBenchmark.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('..\Native\build\SteamFrameBenchmark.exe')" />

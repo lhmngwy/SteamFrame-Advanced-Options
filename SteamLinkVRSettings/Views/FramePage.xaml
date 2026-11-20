@@ -500,6 +500,36 @@
                             <TextBlock x:Name="PatchDetails" Text="" Style="{StaticResource Hint}" IsTextSelectionEnabled="True" />
                         </StackPanel>
                     </Expander>
+                    <Expander Header="Automatic 500 Mbps patch maintenance" IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <StackPanel Spacing="12" Padding="0,12,0,0">
+                            <TextBlock Text="Optional background service, started with Windows before sign-in. Reapplies the verified patch after driver updates, even with this app closed. Waits for SteamVR to close; never stops your session. Unsupported drivers are left untouched. Installation requires administrator approval." Style="{StaticResource Hint}" />
+                            <TextBlock x:Name="MaintenanceStatus" Text="Refresh status to check the optional service." TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Button Content="Install / update watched installation and enable" Click="InstallMaintenance_Click" />
+                                <Button Content="Uninstall service…" Click="UninstallMaintenance_Click" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Button Content="Enable" Click="EnableMaintenance_Click" />
+                                <Button Content="Disable" Click="DisableMaintenance_Click" />
+                                <Button Content="Check / retry now" Click="CheckMaintenance_Click" />
+                                <Button Content="Refresh status" Click="RefreshMaintenance_Click" />
+                                <Button Content="Copy diagnostics" Click="CopyMaintenanceDetails_Click" />
+                            </StackPanel>
+                            <TextBlock Text="Disable does not restore the driver. Restore original driver and Back to stock disable automatic maintenance before restoring. Uninstall removes the service and its credentials, but retains driver backups." Style="{StaticResource Hint}" />
+                            <TextBlock Text="Pushover notifications" FontWeight="SemiBold" />
+                            <TextBlock Text="Use your own Pushover application API token and user/group key. Leave both password fields empty to keep saved credentials. Credentials are encrypted for the service, never included in presets or diagnostics. Save these settings before testing." Style="{StaticResource Hint}" />
+                            <PasswordBox x:Name="MaintenanceTokenInput" Header="Application API token" />
+                            <PasswordBox x:Name="MaintenanceUserInput" Header="User or group key" />
+                            <TextBox x:Name="MaintenanceDeviceInput" Header="Device name (optional)" MaxLength="25" />
+                            <CheckBox x:Name="MaintenanceSuccessInput" Content="Notify when the driver is successfully patched" IsChecked="True" />
+                            <CheckBox x:Name="MaintenanceFailureInput" Content="Notify when automatic patching fails" IsChecked="True" />
+                            <Button Content="Save notification settings" Click="SaveMaintenanceNotifications_Click" HorizontalAlignment="Left" />
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <Button Content="Send test notification" Click="TestMaintenanceNotification_Click" />
+                                <Button Content="Remove credentials" Click="RemoveMaintenanceCredentials_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
                     <Expander Header="USB recovery" IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                         <StackPanel Spacing="12" Padding="0,12,0,0">
                             <TextBlock Text="For the experimental USB setup with the previously installed daemon fix. Wireless streaming uses the dongle instead." Style="{StaticResource Hint}" />

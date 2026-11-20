@@ -4,12 +4,11 @@
     <TargetFramework>net9.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../SteamLinkVRSettings/Frame/*.cs" Link="Frame/%(Filename)%(Extension)" />
+    <Compile Include="../../SteamLinkVRSettings/Frame/*.cs" Exclude="../../SteamLinkVRSettings/Frame/BitratePatcher.cs;../../SteamLinkVRSettings/Frame/PatchManifest.cs;../../SteamLinkVRSettings/Frame/AdaptivePatchScanner*.cs;../../SteamLinkVRSettings/Frame/DriverCompatibility.cs;../../SteamLinkVRSettings/Frame/RuntimeProcessState.cs" Link="Frame/%(Filename)%(Extension)" />
+    <ProjectReference Include="../../SteamFrame.DriverPatching/SteamFrame.DriverPatching.csproj" />
     <Compile Include="../../SteamLinkVRSettings/Services/SettingsService.cs" Link="SettingsService.cs" />
     <Compile Include="../../SteamLinkVRSettings/Models/SettingItem.cs" Link="SettingItem.cs" />
     <Compile Include="../../SteamLinkVRSettings/Helpers/SettingDefinitions.cs" Link="SettingDefinitions.cs" />
-    <EmbeddedResource Include="../../SteamLinkVRSettings/Assets/bitrate-patch.json" LogicalName="SteamLinkVRSettings.Assets.bitrate-patch.json" />
-    <EmbeddedResource Include="../../SteamLinkVRSettings/Assets/bitrate-patch-stable.json" LogicalName="SteamLinkVRSettings.Assets.bitrate-patch-stable.json" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Iced" Version="1.21.0" />
     <Using Include="Xunit" />

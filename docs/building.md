@@ -17,7 +17,8 @@ the .NET CLI lacks the Windows App SDK packaging tasks; the test projects build 
 .\Build.ps1
 ```
 
-This builds the native encoder probe and runs its tests, builds the app, and runs the test
+This builds the native encoder probe and runs its tests, publishes the optional self-contained
+Windows patch service, builds the app with its bundled service payload, and runs the test
 projects. Output goes to `SteamLinkVRSettings\bin\x64\Release\net9.0-windows10.0.22621.0\`.
 
 Close any copy of the app running from that folder first, or build elsewhere:
@@ -102,6 +103,7 @@ dotnet test Tests\BenchmarkTests
 dotnet test Tests\StreamingHealthTests
 dotnet test Tests\StreamingFrameTraceTests
 dotnet test Tests\FrameReceiverDiagnosticsTests
+dotnet test Tests\PatchMaintenanceTests
 ```
 
 | Project | Covers |
@@ -112,6 +114,7 @@ dotnet test Tests\FrameReceiverDiagnosticsTests
 | StreamingFrameTraceTests | Recovery-trace timing without inventing drops |
 | FrameReceiverDiagnosticsTests | The headset-side collector script, run locally against fixture logs |
 | PatcherTests | Exact patch and restore hashes, refusal paths, backups and adaptive discovery |
+| PatchMaintenanceTests | Update reconciliation, notification switches/deduplication/retries, encrypted credentials, bounded IPC, and synthetic real-engine patch/reapply/restore |
 | CompositorTimingTests | PC presentation counter handling (console project, run by `Build.ps1`) |
 
 **PatcherTests** needs a verified original `driver_vrlink.dll`, which is never committed:
@@ -132,6 +135,42 @@ dotnet run --project Native\tests\managed -- Native\build\SteamFrameEncoderProbe
 
 None of these tests modify your Steam configuration, and none load anything into a running SteamVR.
 
+### Optional service development
+
+The worker and its shared libraries build independently of WinUI:
+
+```powershell
+dotnet build SteamFrame.PatchService --configuration Release
+dotnet test Tests\PatchMaintenanceTests --configuration Release
+dotnet publish SteamFrame.PatchService --configuration Release --runtime win-x64 --self-contained true --output artifacts\PatchService
+```
+
+`Build.ps1` stages that payload before building the app. `Package.ps1` also publishes it into
+the ZIP's `PatchService` folder, including with `-SkipBuild`. Publishing never registers a
+service, grants filesystem permissions, contacts Pushover or modifies a SteamVR installation.
+There is intentionally no general-purpose console mode accepting arbitrary paths or commands.
+
+Before shipping changes to service installation/security, validate in a disposable Windows VM:
+install through the app, reboot and check before sign-in; replace a synthetic driver while
+SteamVR is stopped/running; test a secondary library and standard-user control; inspect Program
+Files/ProgramData/driver-directory ACLs; test install/update rollback, disable/uninstall, and
+restore followed by reboot. A real Pushover test is opt-in and requires private credentials.
+Automated tests use synthetic PE images and mocked HTTP; they do not install the service on
+the developer machine or claim boot/session-zero or real-device delivery validation.
+
+To exercise normal-user endpoint verification against an already installed, running service
+without changing its settings, enable the optional read-only smoke test:
+
+```powershell
+$env:SLVR_SERVICE_IDENTITY_SMOKE = '1'
+dotnet test Tests\PatchMaintenanceTests --configuration Release
+Remove-Item Env:SLVR_SERVICE_IDENTITY_SMOKE
+```
+
+This sends only a status request. It verifies the named-pipe server against the Service
+Control Manager's registered image/account and live PID, without opening the service process,
+installing/stopping/restarting it, modifying a driver, or sending Pushover notifications.
+
 ## Source map
 
 | Path | Contents |
@@ -140,4 +179,7 @@ None of these tests modify your Steam configuration, and none load anything into
 | `SteamLinkVRSettings\ViewModels` | Settings editor view model |
 | `SteamLinkVRSettings\Frame` | SteamVR paths and live settings, connections, patcher, encoder probe controller, diagnostics |
 | `SteamLinkVRSettings\Services` | Atomic `steamvr.vrsettings` reading and writing |
+| `SteamFrame.DriverPatching` | Shared assembly linking the existing audited patch sources and embedded manifests |
+| `SteamFrame.PatchMaintenance` | Maintenance state machine, durable journal, encrypted credentials, Pushover and IPC protocol |
+| `SteamFrame.PatchService` | Windows worker, driver watcher, secured pipe and elevated install/update/uninstall helper |
 | `Native` | C++ NVENC encoder probe, quality-map logic and tests; see [its README](../Native/README.md) |

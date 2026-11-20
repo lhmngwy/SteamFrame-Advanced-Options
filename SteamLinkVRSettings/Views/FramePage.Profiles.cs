@@ -179,6 +179,7 @@ public sealed partial class FramePage
     private async Task PreparePendingPresetAsync()
     {
         if (_pendingPreset is not { } selected) return;
+        if (!selected.BitratePatch) await DisableMaintenanceBeforeRestoreAsync();
         // Include any edits made after loading the preset, rather than replaying stale control values.
         _pendingPreset = await CaptureEditorProfileAsync();
         var patch = await _patcher.InspectAsync(_paths.Driver);

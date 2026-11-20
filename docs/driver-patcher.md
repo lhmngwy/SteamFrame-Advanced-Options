@@ -28,7 +28,111 @@ For manual installation or restore:
    patched, or unsupported.
 3. Click **Install 500 Mbps override**, or **Restore original driver** to undo it.
 
-SteamVR updates can replace the patched driver. Inspect again after updating.
+SteamVR updates can replace the patched driver. Inspect again after updating, or explicitly
+enable the optional automatic maintenance service described below.
+
+## Automatic patch maintenance (optional)
+
+Under **Patches & Recovery → Automatic 500 Mbps patch maintenance**, select
+**Install / update watched installation and enable**. Confirm the displayed SteamVR
+installation and approve the administrator prompt. The service is disabled by default;
+opening the app never installs it.
+
+The installed service starts automatically with Windows, before sign-in, and works with
+the app closed. It inspects the installed `driver_vrlink.dll` and uses exactly the same
+compatibility scanner, byte verification, original backups and receipts as manual patching.
+It raises the two ceilings and HEVC level; it does not change streaming targets or presets.
+
+- File changes are allowed to settle before inspection. Periodic checks recover missed
+  filesystem events, resume and driver-directory replacement.
+- Steam update/download metadata is an additional deferral hint, not proof that an update
+  completed. Exact source bytes and the runtime state are checked again before replacement.
+- If SteamVR is running, maintenance waits for it to close. It never stops SteamVR or a game.
+  SteamVR can therefore start before maintenance finishes, and that session may remain stock.
+- Unsupported files are left untouched. Invalid recovery files or verification failures
+  block automatic writes and retain recovery evidence. **Check / retry now** explicitly
+  retries inspection without bypassing any safety check.
+- Temporarily missing or unreadable drivers are retried; after ten minutes, an availability
+  failure can be reported. A later valid driver is still detected.
+- Watch one administrator-approved local installation per machine. If SteamVR moves, reopen
+  the app and use the installation/update button to authorize the newly discovered path.
+  The service does not use its own account's HKCU Steam discovery or silently switch libraries.
+
+**Refresh status** shows the service version, watched path, pending/failure state, last check,
+last successful patch and notification-delivery status. **Copy diagnostics** omits credentials,
+user identities, local paths and queued message contents.
+
+### Pushover setup
+
+Create your own application API token at <https://pushover.net/apps/build>, then enter it
+and your Pushover user/group key in the service's password fields. A device name is optional.
+Save the settings (credentials are validated) and select **Send test notification**.
+Leave both password fields empty when changing settings without replacing saved credentials.
+
+The two checkboxes are independent:
+
+- **Notify when the driver is successfully patched** — only after this service applies and
+  verifies a patch and its matching original backup, including recovery of a completed write
+  after a crash. An already-patched startup check does not send a success message.
+- **Notify when automatic patching fails** — reports unsupported builds, persistent file
+  unavailability and patch/recovery verification failures. Waiting for SteamVR is not failure.
+
+Both boxes start checked, but no messages are sent without explicitly saved credentials.
+Patching works without Pushover and with either or both notification types disabled. Turning
+off a type removes its queued messages. Disabling maintenance clears all queued messages.
+
+The service coalesces repeated events and persists incident IDs across restarts. A genuine
+replacement of the same driver build can produce a new success message. Network/server
+failures use bounded backoff; invalid requests pause delivery until settings are saved again,
+and quota errors respect the reset time. The queue is capped at 100 messages with a 24-hour
+expiry. A timed-out HTTP request can have been accepted, so rare duplicate delivery is possible.
+API acceptance is not proof that a device displayed the notification.
+
+Tokens and user keys are DPAPI-encrypted in protected ProgramData storage, never stored in
+`frame.json`, presets, diagnostics or release archives. The service uses HTTPS to contact
+Pushover; notification contents disclose the patch outcome and available SteamVR build metadata,
+but not local paths. **Remove credentials** deletes saved credentials and queued messages.
+
+### Disable, restore and uninstall
+
+**Disable** is durable across reboot but leaves the current driver patch installed. Manual
+**Restore original driver**, a stock-driver preset application, and **Back to stock** first
+disable and quiesce maintenance, then use the shared writer lock to restore. Re-enable it
+explicitly if you later want automatic patching again. These settings are not tuning presets.
+If the service is unresponsive, restore is blocked rather than racing it; repair/update or
+uninstall the service first.
+
+**Uninstall service** stops and removes it, deletes its installed executable payload and
+credentials, and leaves the current driver, original backups and receipts unchanged. Protected
+configuration/journal files may remain for diagnostics; subsequent installation can reuse
+notification preferences. Uninstall does not restore the driver.
+
+The portable ZIP bundles the installer payload but does not run it automatically. Installation
+copies it into `%ProgramFiles%\SteamFrame Advanced Options\PatchService`; deleting or moving
+the extracted app does not remove the service.
+
+After updating the portable app, use **Install / update watched installation and enable**
+again to update the separately installed service and its compatibility scanner; extracting
+a new ZIP alone does not replace the running service.
+
+Its mutable data lives under
+`%ProgramData%\SteamFrame Advanced Options\PatchService`. It runs as the dedicated virtual
+account `NT SERVICE\SteamFramePatchService`, granted modification rights only to its data and the watched driver directory,
+not as LocalSystem. Installing/updating/uninstalling requires administrator approval; normal
+control uses a local named pipe restricted to the enabling account and administrators.
+The app verifies that the pipe server PID belongs to the running registered service and
+that its protected executable path and dedicated account match. This uses read-only Service
+Control Manager queries, so the app does not need access to inspect another account's process.
+Installation verifies the service identity and tests driver read access plus temporary-file
+creation/deletion before accepting the service as healthy. Unexpected service errors record
+a sanitized Windows Application event. Crash recovery restarts it after 30 seconds, two minutes
+and five minutes, then stops retrying until a manual restart or the failure-count reset.
+
+If installation fails, the status bar reports the failing stage, original error and Windows
+error number when available, plus whether rollback completed. These diagnostics return over
+a private local pipe; the elevated helper does not write results to a caller-supplied path.
+Windows can elevate without displaying a prompt when its UAC policy is configured that way;
+the absence of a prompt alone does not mean elevation failed.
 
 ## What changes
 
@@ -87,7 +191,8 @@ using an isolated copy: patching and exact restoration passed. The installed dri
 was not replaced, and live streaming on this patch has not been tested. Existing
 known-layout paths remain unchanged. Bitrate-cap selectors, API versions, supported
 initialization forms and safe executable padding are still required; this is not
-universal support for all future builds or automatic unattended patch installation.
+universal support for all future builds. Unattended patching requires the separate explicit
+automatic-maintenance opt-in above.
 
 A missing original backup is normal before the first installation. If an unmodified driver
 is reported as unsupported, collect **Driver file and verification** details and the SteamVR

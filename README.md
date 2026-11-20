@@ -32,6 +32,7 @@ including the ones SteamVR doesn't show in its own UI.
 | **Codec selector** | Switch between HEVC, AV1 and H.264, choose H.264 25–500 Mbps or AV1 25–200 Mbps at 90/120 Hz, and restore stock HEVC. AV1/H.264 are exact-build experiments and restart the stream. |
 | **Streaming issue capture** | Timestamps recovery requests, bad-link events, encoder stalls, PC presentation drops and headset receiver faults, and saves them as JSONL. |
 | **Driver patcher** | Raises the driver's 232/350 Mbps ceilings to 500 Mbps and selects HEVC level 6.2, with verified backups and one-click restore. |
+| **Automatic patch maintenance** | Optional Windows startup service reapplies the verified 500 Mbps patch after driver updates without the app open. Waits for SteamVR to close; Pushover success and failure alerts can each be switched on or off. |
 | **Guided first run** | Checks the actual driver and walks through installing the bitrate override. Explains an existing patch instead of implying that opening the app installed it. Reopen under Patches & Recovery. |
 | **Verified refresh rate** | HEVC Hz changes set the Frame display through paired SSH and verify the active display rate on the headset and PC. Reconnects SteamVR if needed. |
 | **Connection tools** | Shows the dongle's negotiated USB 2/USB 3 speed and headset link status. Reconnect Frame restarts SteamVR once and verifies fresh HEVC output; separate recovery handles the Frame USB daemon. |
@@ -163,8 +164,11 @@ own installed file. It refuses unknown headset builds.
   your original file. Driver patches keep a hash-verified original and a receipt.
 - **Measurement only.** The encoder monitor counts compressed frame sizes and never reads,
   stores or copies video. Log capture stores synthesized events, not raw log lines.
-- **No surprises.** Monitoring and patching only happen when you click them. SSH uses strict
-  host checking with your own trusted host file and never auto-trusts a device.
+- **No surprises.** Monitoring is user-started. Driver patching is user-started unless you
+  explicitly install and enable the optional Windows startup patch service under Patches &
+  Recovery. It waits for SteamVR to close and refuses unsupported files. Manual restore and
+  Back to stock disable automatic reapplication. SSH uses strict host checking with your
+  own trusted host file and never auto-trusts a device.
 - **Nothing personal is shipped.** SSH keys, passwords, personal settings, logs and
   Valve binaries are never packaged. The codec companion uses the dedicated dongle's
   fixed device address. It includes patch recipes and the experimental open-source
@@ -202,6 +206,9 @@ own installed file. It refuses unknown headset builds.
 ```
 SteamLinkVRSettings/   WinUI 3 app (views, view models, services)
   Frame/               Steam Frame runtime, connection, patcher, probe and diagnostics services
+SteamFrame.DriverPatching/ Shared audited patch engine (links the existing Frame sources)
+SteamFrame.PatchMaintenance/ Background reconciliation, durable state, Pushover and local IPC
+SteamFrame.PatchService/ Windows service and elevated installation helper
 Native/                NVENC encoder probe (C++), its tests and vendored MinHook/NVIDIA headers
 Frame/AV1/             Supervised codec companion, Frame decoder port and test/build tools
 Tests/                 xUnit test projects

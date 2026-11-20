@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Keep the audited engine at its existing source paths; every host uses this assembly. -->
+    <Compile Include="../SteamLinkVRSettings/Frame/BitratePatcher.cs" Link="BitratePatcher.cs" />
+    <Compile Include="../SteamLinkVRSettings/Frame/PatchManifest.cs" Link="PatchManifest.cs" />
+    <Compile Include="../SteamLinkVRSettings/Frame/AdaptivePatchScanner*.cs" Link="%(Filename)%(Extension)" />
+    <Compile Include="../SteamLinkVRSettings/Frame/DriverCompatibility.cs" Link="DriverCompatibility.cs" />
+    <Compile Include="../SteamLinkVRSettings/Frame/RuntimeProcessState.cs" Link="RuntimeProcessState.cs" />
+    <EmbeddedResource Include="../SteamLinkVRSettings/Assets/bitrate-patch.json" LogicalName="SteamLinkVRSettings.Assets.bitrate-patch.json" />
+    <EmbeddedResource Include="../SteamLinkVRSettings/Assets/bitrate-patch-stable.json" LogicalName="SteamLinkVRSettings.Assets.bitrate-patch-stable.json" />
+    <PackageReference Include="Iced" Version="1.21.0" />
+    <PackageReference Include="System.Threading.AccessControl" Version="9.0.0" />
+    <InternalsVisibleTo Include="SteamLinkVRSettings" />
+    <InternalsVisibleTo Include="SteamFrame.PatchService" />
+    <InternalsVisibleTo Include="PatcherTests" />
+    <InternalsVisibleTo Include="BenchmarkTests" />
+    <InternalsVisibleTo Include="PatchMaintenanceTests" />
+  </ItemGroup>
+</Project>

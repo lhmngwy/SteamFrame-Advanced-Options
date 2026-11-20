@@ -6,6 +6,7 @@ namespace SteamLinkVRSettings.Frame;
 
 public enum BitratePatchState { Missing, Original, Patched, Unsupported, Unavailable }
 public enum BitrateBackupState { Missing, VerifiedOriginal, Mismatch }
+public sealed class PatchVerificationException(string message, Exception inner) : IOException(message, inner);
 public sealed record BitratePatchStatus(string FilePath, string BackupPath, BitratePatchState State,
     BitrateBackupState BackupState, string? Sha256, string? BackupSha256, bool VrServerRunning, string Message)
 {
@@ -53,12 +54,18 @@ public sealed class BitratePatcher
         var full = NormalizePath(path); await OperationGate.WaitAsync(cancellationToken);
         try { return await InspectCoreAsync(full, cancellationToken); } finally { OperationGate.Release(); }
     }
-    public async Task<BitratePatchStatus> ApplyAsync(string path, CancellationToken cancellationToken = default)
+    public Task<BitratePatchStatus> ApplyAsync(string path, CancellationToken cancellationToken = default) =>
+        PatchOperationLock.RunAsync(() => ApplyCoreAsync(path, null, cancellationToken), cancellationToken);
+    public Task<BitratePatchStatus> ApplyExpectedAsync(string path, string expectedSourceSha256, CancellationToken cancellationToken = default) =>
+        PatchOperationLock.RunAsync(() => ApplyCoreAsync(path, expectedSourceSha256, cancellationToken), cancellationToken);
+    private async Task<BitratePatchStatus> ApplyCoreAsync(string path, string? expectedSourceSha256, CancellationToken cancellationToken)
     {
         var full = NormalizePath(path); await OperationGate.WaitAsync(cancellationToken);
         try
         {
             var status = await InspectCoreAsync(full, cancellationToken); RequireSupported(status);
+            if (expectedSourceSha256 != null && status.Sha256 != expectedSourceSha256)
+                throw new IOException("The driver changed since the maintenance inspection; no changes were made.");
             if (status.IsPatched) return status;
             EnsureVrServerStopped();
             var original = await ReadBoundedAsync(full, cancellationToken);
@@ -74,7 +81,9 @@ public sealed class BitratePatcher
         }
         finally { OperationGate.Release(); }
     }
-    public async Task<BitratePatchStatus> RestoreAsync(string path, CancellationToken cancellationToken = default)
+    public Task<BitratePatchStatus> RestoreAsync(string path, CancellationToken cancellationToken = default) =>
+        PatchOperationLock.RunAsync(() => RestoreCoreAsync(path, cancellationToken), cancellationToken);
+    private async Task<BitratePatchStatus> RestoreCoreAsync(string path, CancellationToken cancellationToken)
     {
         var full = NormalizePath(path); await OperationGate.WaitAsync(cancellationToken);
         try
@@ -257,7 +266,7 @@ public sealed class BitratePatcher
             await ReadVerifiedAsync(path, plan, !restoring, CancellationToken.None); verified = true;
         }
         catch (Exception error) when (committed)
-        { throw new IOException($"The driver changed during replacement or verification. The displaced file was retained at '{displaced}'. Verify SteamVR files before continuing.", error); }
+        { throw new PatchVerificationException($"The driver changed during replacement or verification. The displaced file was retained at '{displaced}'. Verify SteamVR files before continuing.", error); }
         finally { DeleteOwnTemporary(temp); if (verified) DeleteOwnTemporary(displaced); }
     }
     private static async Task WriteDurableAsync(string path, byte[] bytes, CancellationToken ct)

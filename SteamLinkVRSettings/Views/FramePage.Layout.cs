@@ -22,6 +22,7 @@ public sealed partial class FramePage
         };
         view.Visibility = Visibility.Visible; SectionHeading.Text = heading; SectionDescription.Text = description;
         if (section == "stock") _ = RefreshStockStatusAsync();
+        if (section == "tools") _ = RefreshMaintenanceAsync();
     }
     private void OpenSection_Click(object sender, RoutedEventArgs e) => SectionRequested?.Invoke((sender as FrameworkElement)?.Tag as string ?? "overview");
     private void UseDongleAddress_Click(object sender, RoutedEventArgs e) => SshHostInput.Text = "10.35.78.1";

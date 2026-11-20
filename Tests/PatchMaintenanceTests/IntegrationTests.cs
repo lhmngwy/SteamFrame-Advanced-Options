@@ -66,9 +66,10 @@ public sealed class IntegrationTests : IDisposable
         public Task<BitratePatchStatus> InspectAsync(CancellationToken ct) => patcher.InspectAsync(path, ct);
         public Task<BitratePatchStatus> ApplyAsync(string expectedSourceSha256, CancellationToken ct) => patcher.ApplyExpectedAsync(path, expectedSourceSha256, ct);
     }
-    [Fact] public async Task Real_patch_engine_handles_synthetic_update_backup_receipt_and_restore()
+    [Theory] [InlineData(0x140)] [InlineData(0x148)]
+    public async Task Real_patch_engine_handles_synthetic_update_backup_receipt_and_restore(int capTarget)
     {
-        var path = Path.Combine(directory, "driver_vrlink.dll"); var original = new SyntheticEncoderImage().Bytes;
+        var path = Path.Combine(directory, "driver_vrlink.dll"); var original = new SyntheticEncoderImage(capTarget: capTarget).Bytes;
         File.WriteAllBytes(path, original);
         var store = new MaintenanceStore(Path.Combine(directory, "state"));
         var now = DateTimeOffset.UtcNow; var config = new MaintenanceConfig { Enabled = true };

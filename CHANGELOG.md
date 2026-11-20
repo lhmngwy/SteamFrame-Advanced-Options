@@ -2,6 +2,16 @@
 
 ## Unreleased — Instruction-aware driver patch discovery
 
+- Fixed automatic patch maintenance for SteamVR beta build **26793788**. Its target
+  field moved from +0x140 to +0x148; a separate complete cap-selector family now recognizes
+  that layout without wildcarding the adapter query, branch, registers or cap references.
+  All NVENC, HEVC, import, function-boundary, backup and hash checks remain required.
+- Patch service **1.0.1** revalidates the driver after a successful service update so an
+  unsupported-layout decision from the previous scanner does not leave the same build blocked.
+  Added binary-free acceptance/refusal tests and isolated real-driver patch/restore coverage.
+- Verified the installed service automatically reapplies and verifies build 26793788 with
+  its matching original backup and receipt; Pushover accepted the success notification.
+
 - Fixed normal-user UI connections to the installed startup service. Endpoint identity
   is verified using the read-only Service Control Manager configuration and live process
   ID, rather than opening the virtual service account's process (which Windows can deny).

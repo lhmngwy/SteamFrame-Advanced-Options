@@ -94,6 +94,19 @@ public sealed class MaintenanceTests
         await rig.Apply(); rig.Engine = rig.Create(); await rig.Tick(60);
         Assert.Single(rig.State.Queue); Assert.Equal(0, rig.Driver.Writes);
     }
+    [Fact] public async Task Scanner_update_revalidation_reconsiders_the_same_previously_blocked_source()
+    {
+        var rig = new Rig(); rig.Driver.Status = Original() with { State = BitratePatchState.Unsupported };
+        await rig.Apply(); Assert.NotNull(rig.State.BlockedIdentity);
+        var failureId = Assert.Single(rig.State.Queue).Id;
+        rig.Engine = rig.Create(); rig.Driver.Status = Original(); // Same hash, now recognized by the new scanner.
+        await rig.Tick(30); Assert.Equal(0, rig.Driver.Writes);
+        rig.Engine.RequestCheck();
+        await rig.Tick(); Assert.Equal(1, rig.Driver.Writes);
+        Assert.Null(rig.State.BlockedIdentity);
+        Assert.Equal(failureId, rig.State.Queue[0].Id);
+        Assert.True(rig.State.Queue[1].Success);
+    }
     [Fact] public async Task Backup_mismatch_blocks_even_a_recognized_patch()
     {
         var rig = new Rig(); rig.Driver.Status = Original() with { State = BitratePatchState.Patched, BackupState = BitrateBackupState.Mismatch };

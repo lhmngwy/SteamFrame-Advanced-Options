@@ -10,6 +10,9 @@ public static partial class AdaptivePatchScanner
 {
     private const string Caps = "F3 44 0F 10 15 ?? ?? ?? ?? F3 0F 11 8F 40 01 00 00 49 8B 8E 88 01 00 00 48 8B 01 FF 90 88 00 00 00 84 C0 74 09 F3 44 0F 10 15 ?? ?? ?? ??";
     private const string StableCaps = "F3 44 0F 10 0D ?? ?? ?? ?? F3 0F 11 8F 3C 01 00 00 49 8B 8E 88 01 00 00 48 8B 01 FF 90 88 00 00 00 84 C0 74 09 F3 44 0F 10 0D ?? ?? ?? ??";
+    // Beta build 26793788 moves the target field to +0x148. The adapter query,
+    // conditional selector and both RIP-relative cap loads must still match in full.
+    private const string CurrentBetaCaps = "F3 44 0F 10 15 ?? ?? ?? ?? F3 0F 11 8F 48 01 00 00 49 8B 8E 88 01 00 00 48 8B 01 FF 90 88 00 00 00 84 C0 74 09 F3 44 0F 10 15 ?? ?? ?? ??";
     private const string Preset = "FF 96 A0 9B 00 00 48 8B 8E 70 02 00 00 48 8D 95 18 03 00 00 41 B8 00 0E 00 00 E8 ?? ?? ?? ?? 66 0F 6F 05 ?? ?? ?? ?? F3 0F 7F 44 24 30 C7 44 24 40 1B 00 00 00";
     private const string StablePreset = "FF 96 38 9B 00 00 48 8B 8E 08 02 00 00 48 8D 95 18 03 00 00 41 B8 00 0E 00 00 E8 ?? ?? ?? ?? 66 0F 6F 05 ?? ?? ?? ?? F3 0F 7F 44 24 30 C7 44 24 40 1B 00 00 00";
     private const string Level = "B8 BA 00 00 00 C6 45 90 00 F3 0F 10 81 B8 00 00 00 B9 B7 00 00 00 F3 0F 58 05 ?? ?? ?? ?? F3 48 0F 2C D0 66 0F 6F 05 ?? ?? ?? ?? 49 0F AF D0 F3 0F 7F 45 A0 41 B8 09 00 00 00 49 0F AF D1 48 81 FA 00 00 80 7F 48 8D 15 ?? ?? ?? ?? 0F 4F C8 48 8B 86 70 02 00 00 89 88 A8 00 00 00 48 8B 86 70 02 00 00 C7 80 AC 00 00 00 01 00 00 00";
@@ -22,7 +25,7 @@ public static partial class AdaptivePatchScanner
         var pe = new Image(source);
         // Stable and beta use different private encoder layouts. Select a complete
         // verified family; do not wildcard member offsets or mix their contexts.
-        var cap = pe.Unique("Bitrate cap selector", Caps, StableCaps);
+        var cap = pe.Unique("Bitrate cap selector", Caps, StableCaps, CurrentBetaCaps);
         var stable = cap.Variant == 1;
         var api = pe.Unique("NVENC API initialization", Api);
         pe.FunctionContaining(api.Offset, api.Length);

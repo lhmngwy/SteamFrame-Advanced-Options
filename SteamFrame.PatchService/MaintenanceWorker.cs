@@ -136,9 +136,7 @@ internal sealed class MaintenanceWorker : BackgroundService
             case "health": await InstalledDriver.ProbeAccessAsync(config.SteamVrRoot, ct); break;
             case "check":
                 // Explicit user retry still runs every byte/backup/runtime check; it never forces a patch.
-                engine.Journal.BlockedIdentity = null;
-                engine.Journal.InFlightSource = null;
-                store.Write("journal.json", engine.Journal);
+                engine.RequestCheck();
                 nextCheck = 0; break;
             case "disable":
                 config.Enabled = false; store.Write("config.json", config);

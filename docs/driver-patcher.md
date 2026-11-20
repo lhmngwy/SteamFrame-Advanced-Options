@@ -177,6 +177,19 @@ The scanner recognizes each complete instruction family separately, retaining th
 NVENC version, function-boundary, import, cap-constant and executable-padding checks.
 Patch compatibility does not establish support for every private encoder or codec hook.
 
+Beta build **26793788** moves the cap selector's target field to `+0x148`. It has its own
+complete selector family; the adapter-query slot, selected register, branch and adjacent
+350/232 Mbps read-only constants must still match. Its original SHA-256 is
+`2c7dc5f17f22644aa4832263134d51fe406aec1e3b9c96c57748e5d599fad355`; the verified patch produces
+`5a6e1f3a879a870d3fed128620adc833d61dbbd01d4488d548a5f0cf1e39a82d`.
+Isolated application, matching backup/receipt recognition and exact restoration were tested.
+On November 20, 2026, the installed 1.0.1 service also reapplied this patch successfully,
+verified the installed hash and matching original/receipt, and received Pushover API acceptance
+for its success notification, without restarting SteamVR. Live streaming performance on this
+build has not been re-measured.
+Service 1.0.1 schedules a fresh compatibility check after updating, including a driver hash
+that the previous scanner blocked. This does not add codec or encoder-monitor hook support.
+
 For changed preset/reconfiguration layouts, the scanner also decodes x64 instructions
 with Iced. It derives the private API-table and embedded encoder-config locations from
 their initialization, then verifies the preset query's API slot, output argument,

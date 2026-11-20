@@ -134,6 +134,11 @@ internal static class ServiceInstaller
             }
             if (health?.Ok != true) throw new IOException("The installed service did not pass its health check. "
                 + (health?.Message ?? healthError?.Message ?? "No service reply was received."), healthError);
+            // A scanner upgrade must reconsider a previously unsupported hash, not
+            // leave the old journal's block in effect until a separate UI click.
+            progress.Stage = "Scheduling driver revalidation";
+            var retry = await MaintenanceClient.SendAsync(new("check"));
+            if (!retry.Ok) throw new IOException("The updated service could not schedule driver revalidation: " + retry.Message);
             progress.Stage = "Removing previous installation permissions";
             if (previous != null && !string.Equals(previous.SteamVrRoot, config.SteamVrRoot, StringComparison.OrdinalIgnoreCase)) RevokeDriverAccess(previous.SteamVrRoot);
             if (movedOld)

@@ -21,7 +21,7 @@ internal sealed class SyntheticEncoderImage
     private readonly List<(int Begin, int End, int Unwind)> functions = [];
     private int cursor;
 
-    public SyntheticEncoderImage(int stack = -0x10, int config = 0x928, int table = 0x9a60, int pointer = 0x270, bool useRdi = false, bool useEcx = false, bool chain = true, bool scheduled = false)
+    public SyntheticEncoderImage(int stack = -0x10, int config = 0x928, int table = 0x9a60, int pointer = 0x270, bool useRdi = false, bool useEcx = false, bool chain = true, bool scheduled = false, int capTarget = 0x140)
     {
         Write16(0, 0x5a4d); Write32(0x3c, 0x80); Write32(0x80, 0x4550);
         Write16(0x84, 0x8664); Write16(0x86, 3); Write16(0x94, 240);
@@ -40,6 +40,7 @@ internal sealed class SyntheticEncoderImage
         cursor = 0x1000;
         Emit("F3 44 0F 10 15 00 00 00 00 F3 0F 11 8F 40 01 00 00 49 8B 8E 88 01 00 00 48 8B 01 FF 90 88 00 00 00 84 C0 74 09 F3 44 0F 10 15 00 00 00 00 C3");
         Relative(0x1005, 0x1009, 0x3304); Relative(0x102a, 0x102e, 0x3300);
+        Write32(0x100d, capTarget);
         AddFunction(0x1000, cursor);
         string obj(int modrm) => (modrm + (useRdi ? 1 : 0)).ToString("X2");
 

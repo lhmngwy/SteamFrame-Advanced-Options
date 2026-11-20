@@ -11,6 +11,15 @@ public sealed class MaintenanceEngine(IMaintenanceDriver driver, MaintenanceJour
     public static readonly TimeSpan SettleTime = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan FailureGrace = TimeSpan.FromMinutes(10);
 
+    public void RequestCheck()
+    {
+        // Explicit revalidation (including after a service/scanner update) clears
+        // the old decision, never the source/backup verification requirements.
+        Journal.BlockedIdentity = null;
+        Journal.InFlightSource = null;
+        Persist();
+    }
+
     public async Task TickAsync(MaintenanceConfig config, CancellationToken ct)
     {
         Journal.LastCheck = Now;

@@ -49,3 +49,8 @@ artifacts/
 Native/build/
 __pycache__/
 *.py[cod]
+.tokensave/
+.env
+.env.*
+!.env.example
+TestResults/

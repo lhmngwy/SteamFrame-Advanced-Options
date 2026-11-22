@@ -81,7 +81,7 @@ internal sealed class MaintenanceWorker : BackgroundService
             {
                 engine.Journal.DeliveryPaused = true;
                 engine.Journal.NotificationStatus = "Saved Pushover credentials could not be read; replace or remove them. Driver maintenance is unaffected.";
-                store.Write("journal.json", engine.Journal); return;
+                engine.Persist(); return;
             }
         }
         await engine.DeliverAsync(config, credentials, notifications, ct);
@@ -140,7 +140,7 @@ internal sealed class MaintenanceWorker : BackgroundService
                 nextCheck = 0; break;
             case "disable":
                 config.Enabled = false; store.Write("config.json", config);
-                engine.SettingsChanged(config); engine.Journal.State = "Disabled"; store.Write("journal.json", engine.Journal);
+                engine.Journal.State = "Disabled"; engine.SettingsChanged(config);
                 break; // gate guarantees no in-flight patch remains before acknowledging.
             case "enable":
                 config.Validate(); config.Enabled = true; store.Write("config.json", config); nextCheck = 0;
@@ -158,7 +158,7 @@ internal sealed class MaintenanceWorker : BackgroundService
                 config = candidate; store.Write("config.json", config); engine.SettingsChanged(config);
                 break;
             case "remove-credentials":
-                store.RemoveCredentials(); engine.Journal.Queue.Clear(); store.Write("journal.json", engine.Journal); break;
+                store.RemoveCredentials(); engine.Journal.Queue.Clear(); engine.Persist(); break;
             case "test":
                 var credentials = store.ReadCredentials();
                 if (credentials == null) return new(false, "Save Pushover credentials first.");

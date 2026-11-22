@@ -46,6 +46,51 @@ public sealed class MaintenanceTests
     private static BitratePatchStatus Original() => new("driver", "backup", BitratePatchState.Original, BitrateBackupState.Missing, "original", null, false, "compatible");
     private static PushoverCredentials Credentials => new(new string('a', 30), new string('b', 30));
 
+    [Theory]
+    [InlineData("patched")]
+    [InlineData("disabled")]
+    [InlineData("blocked")]
+    [InlineData("waiting")]
+    public async Task Steady_checks_update_live_status_without_saving_even_after_restart(string mode)
+    {
+        var rig = new Rig();
+        rig.Config.Enabled = mode != "disabled";
+        if (mode == "patched") await rig.Apply();
+        if (mode == "blocked") rig.Driver.Status = Original() with { State = BitratePatchState.Unsupported };
+        if (mode == "waiting") rig.Driver.Status = Original() with { VrServerRunning = true };
+        await rig.Tick();
+        await rig.Tick(30);
+        var saved = rig.State;
+        await rig.Tick(30);
+        Assert.Same(saved, rig.State);
+        Assert.Equal(rig.Now, rig.Engine.Journal.LastCheck);
+        rig.Engine = rig.Create();
+        await rig.Tick(30);
+        Assert.Same(saved, rig.State);
+        Assert.Equal(rig.Now, rig.Engine.Journal.LastCheck);
+    }
+
+    [Fact]
+    public async Task Failed_pre_apply_save_prevents_driver_write_and_is_retried()
+    {
+        var state = new MaintenanceJournal { Identity = "original", ObservedAt = DateTimeOffset.UnixEpoch };
+        var driver = new Driver();
+        var config = new MaintenanceConfig { Enabled = true };
+        int markerWrites = 0;
+        var engine = new MaintenanceEngine(driver, state, journal =>
+        {
+            if (journal.InFlightSource == null) return;
+            Assert.Equal(0, driver.Writes);
+            if (++markerWrites == 1) throw new IOException("Injected journal failure");
+        });
+
+        await Assert.ThrowsAsync<IOException>(() => engine.TickAsync(config, default));
+        Assert.Equal(0, driver.Writes);
+        await engine.TickAsync(config, default);
+        Assert.Equal(2, markerWrites);
+        Assert.Equal(1, driver.Writes);
+    }
+
     [Fact] public async Task Original_is_settled_patched_and_notified_once()
     {
         var rig = new Rig(); await rig.Tick(); Assert.Equal(0, rig.Driver.Writes);

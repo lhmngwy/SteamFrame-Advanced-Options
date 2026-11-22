@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SteamLinkVRSettings.Frame;
 
 namespace SteamFrame.PatchMaintenance;
@@ -6,6 +7,7 @@ namespace SteamFrame.PatchMaintenance;
 public sealed class MaintenanceEngine(IMaintenanceDriver driver, MaintenanceJournal journal, Action<MaintenanceJournal> save,
     Func<DateTimeOffset>? clock = null)
 {
+    private string persistedState = DurableState(journal);
     private DateTimeOffset Now => (clock ?? (() => DateTimeOffset.UtcNow))();
     public MaintenanceJournal Journal { get; } = journal;
     public static readonly TimeSpan SettleTime = TimeSpan.FromSeconds(10);
@@ -160,5 +162,14 @@ public sealed class MaintenanceEngine(IMaintenanceDriver driver, MaintenanceJour
         foreach (var pending in Journal.Queue) pending.NextAttempt = Now;
         Persist();
     }
-    private void Persist() => save(Journal);
+    public void Persist()
+    {
+        var state = DurableState(Journal);
+        if (state == persistedState) return;
+        save(Journal);
+        persistedState = state;
+    }
+
+    // LastCheck is live status, not a reason to write the recovery journal.
+    private static string DurableState(MaintenanceJournal state) => JsonSerializer.Serialize(state with { LastCheck = null });
 }

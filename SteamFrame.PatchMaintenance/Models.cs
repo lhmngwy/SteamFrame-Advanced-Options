@@ -53,7 +53,7 @@ public sealed record PendingNotification(string Id, bool Success, string Message
     public DateTimeOffset NextAttempt { get; set; }
 }
 
-public sealed class MaintenanceJournal
+public sealed record MaintenanceJournal
 {
     public int SchemaVersion { get; set; } = 1;
     public string Identity { get; set; } = "";
